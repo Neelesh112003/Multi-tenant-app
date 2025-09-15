@@ -1,12 +1,13 @@
-// src/store/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 // Async thunk for login
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async ({ email, password }, thunkAPI) => {
     try {
-      const response = await fetch('http://localhost:5000/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

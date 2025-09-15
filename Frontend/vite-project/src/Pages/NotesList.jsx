@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
-// Example logout action, adjust to your auth slice
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+// Example logout action, adjust as needed
 const logout = () => ({ type: 'auth/logout' });
 
-export default function NotesList() {
-  const token = useSelector(state => state.auth.token);
+export default function NotesList({ refreshKey }) {
+  const token = useSelector((state) => state.auth.token);
   const dispatch = useDispatch();
 
   const [notes, setNotes] = useState([]);
@@ -14,8 +16,10 @@ export default function NotesList() {
 
   useEffect(() => {
     async function fetchNotes() {
+      // Clear notes immediately if not authenticated
       if (!token) {
-        setError('Not authenticated');
+        setNotes([]);
+        setError('');
         setLoading(false);
         return;
       }
@@ -24,13 +28,14 @@ export default function NotesList() {
       setError('');
 
       try {
-        const res = await fetch('http://localhost:5000/notes', {
+        const res = await fetch(`${API_BASE_URL}/notes`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (res.status === 401 || res.status === 403) {
           setError('Session expired or unauthorized. Please login again.');
           dispatch(logout());
+          setNotes([]);
           setLoading(false);
           return;
         }
@@ -43,13 +48,14 @@ export default function NotesList() {
         setNotes(data);
       } catch (err) {
         setError(err.message);
+        setNotes([]);
       } finally {
         setLoading(false);
       }
     }
 
     fetchNotes();
-  }, [token, dispatch]);
+  }, [token, dispatch, refreshKey]); // refetch on token or refreshKey change
 
   if (loading) return <p>Loading notes...</p>;
   if (error) return <p className="text-danger">{error}</p>;
@@ -57,7 +63,7 @@ export default function NotesList() {
 
   return (
     <ul className="list-group">
-      {notes.map(note => (
+      {notes.map((note) => (
         <li key={note.id} className="list-group-item">
           <h5>{note.title}</h5>
           <p>{note.content}</p>
