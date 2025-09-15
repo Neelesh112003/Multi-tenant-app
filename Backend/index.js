@@ -10,7 +10,13 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
 
-app.use(cors());
+// Enable CORS with explicit options to allow all origins and required headers
+app.use(cors({
+  origin: '*', // Allow all origins, can be restricted to specific domains if needed
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.json());
 
 // Health check endpoint
