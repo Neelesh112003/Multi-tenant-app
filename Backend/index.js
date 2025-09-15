@@ -3,11 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('./prisma'); // Import prisma singleton here
 
 const app = express();
-const prisma = new PrismaClient();
-const PORT = process.env.PORT || 5000;
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here';
 
 app.use(cors());
@@ -88,19 +87,15 @@ app.post('/notes', authenticateToken, async (req, res) => {
     const { title, content } = req.body;
     const { tenantId, role, userId } = req.user;
 
-    // Role check: only ADMIN or MEMBER can create notes
     if (role !== 'ADMIN' && role !== 'MEMBER') {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Enforce note limit for FREE plan tenants
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
     if (tenant.plan === 'FREE') {
       const noteCount = await prisma.note.count({ where: { tenantId } });
       if (noteCount >= 3) {
-        return res
-          .status(403)
-          .json({ message: 'Note limit reached. Please upgrade your subscription.' });
+        return res.status(403).json({ message: 'Note limit reached. Please upgrade your subscription.' });
       }
     }
 
@@ -140,7 +135,6 @@ app.put('/notes/:id', authenticateToken, async (req, res) => {
     const note = await prisma.note.findFirst({ where: { id, tenantId } });
     if (!note) return res.status(404).json({ message: 'Note not found' });
 
-    // Only ADMIN or note owner can update
     if (role !== 'ADMIN' && note.userId !== userId) {
       return res.status(403).json({ message: 'Unauthorized to update note' });
     }
@@ -166,7 +160,6 @@ app.delete('/notes/:id', authenticateToken, async (req, res) => {
     const note = await prisma.note.findFirst({ where: { id, tenantId } });
     if (!note) return res.status(404).json({ message: 'Note not found' });
 
-    // Only ADMIN or note owner can delete
     if (role !== 'ADMIN' && note.userId !== userId) {
       return res.status(403).json({ message: 'Unauthorized to delete note' });
     }
@@ -206,6 +199,11 @@ app.post('/tenants/:slug/upgrade', authenticateToken, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = app;
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
